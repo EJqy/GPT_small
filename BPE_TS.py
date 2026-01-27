@@ -56,4 +56,77 @@ def train_bpe(
     # indices: stores are the indices of words that contain certain byte pair
     indices = defaultdict(set)
 
+    # initialize stats and indices
+    for idx, word in enumerate(words_list):
+        freq = counts_list[idx] 
+        for i in range(len(word) - 1):
+            pair = (word[i], word[i+1])
+            stats[pair] += freq         
+            indices[pair].add(idx)      
 
+    merges = []
+    for _ in range(num_merges):
+        if not stats:
+            break
+        
+        # Step 1: find the best pair, pair with most frequency
+        best_pair = max(stats.items(), key=lambda x: (x[1], x[0]))[0]
+        
+        if stats[best_pair] <= 0:
+            break
+        
+        # Step 2: access all indices need to be updated
+        merges.append(best_pair)
+        new_token = best_pair[0] + best_pair[1]
+        
+        relevant_indices = list(indices[best_pair])
+        
+        for idx in relevant_indices:
+            word = words_list[idx] 
+            freq = counts_list[idx] 
+            
+            i = 0
+            while i < len(word) - 1:
+                if word[i] == best_pair[0] and word[i+1] == best_pair[1]:
+                    if i > 0:
+                        prev_pair = (word[i-1], word[i])
+                        stats[prev_pair] -= freq
+                        if stats[prev_pair] == 0:
+                            del stats[prev_pair]
+                    if i < len(word) - 2:
+                        next_pair = (word[i+1], word[i+2])
+                        stats[next_pair] -= freq
+                        if stats[next_pair] == 0:
+                            del stats[next_pair]
+                      
+                    word[i] = new_token    
+                    del word[i+1]          
+
+                    if i > 0:
+                        new_prev = (word[i-1], word[i]) 
+                        stats[new_prev] += freq
+                        indices[new_prev].add(idx) 
+                    
+                    if i < len(word) - 1:
+                        new_next = (word[i], word[i+1])
+                        stats[new_next] += freq
+                        indices[new_next].add(idx)
+
+                else:
+                    i += 1
+
+        # clean the merged byte pair 
+        if best_pair in stats: del stats[best_pair]
+        if best_pair in indices: del indices[best_pair]
+
+    # Build the final word dictionary
+    for pair in merges:
+        new_id = len(vocab)
+        vocab[new_id] = pair[0] + pair[1]
+        
+    # Add in special tokens
+    for s_tok in special_tokens:
+        s_bytes = s_tok.encode("utf-8")
+        vocab[len(vocab)] = s_bytes
+
+    return vocab, merges
