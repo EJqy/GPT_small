@@ -28,4 +28,6 @@ The goal is educational and practical: to understand and build every core compon
 .
 ├── tokenizer/            # BPE training + tokenizer implementation
 ├── model/                # Transformer model code
+├── data/                 # dataset building + dataloaders
+├── example/              # Unrevelant scripts simply to fool around
 └── README.md
