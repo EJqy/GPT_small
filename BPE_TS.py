@@ -81,6 +81,7 @@ def train_bpe(
         
         relevant_indices = list(indices[best_pair])
         
+        # Traverse through all the affected words
         for idx in relevant_indices:
             word = words_list[idx] 
             freq = counts_list[idx] 
@@ -130,3 +131,56 @@ def train_bpe(
         vocab[len(vocab)] = s_bytes
 
     return vocab, merges
+
+def bytes_to_unicode():
+
+    bs = list(range(ord("!"), ord("~") + 1)) + list(range(ord("¡"), ord("¬") + 1)) + list(range(ord("®"), ord("ÿ") + 1))
+    cs = bs[:]
+    n = 0
+    for b in range(256):
+        if b not in bs:
+            bs.append(b)
+            cs.append(256 + n)
+            n += 1
+    cs = [chr(n) for n in cs]
+    return dict(zip(bs, cs))
+
+
+def save_tokenizer_files(vocab, merges, out_dir):
+    os.makedirs(out_dir, exist_ok=True)
+
+    byte_encoder = bytes_to_unicode()
+
+    # transform bytes into readable characters
+    json_vocab = {
+        k: "".join(byte_encoder[b] for b in v) 
+        for k, v in vocab.items()
+    }
+    with open(os.path.join(out_dir, "vocab.json"), "w", encoding="utf-8") as f:
+        json.dump(json_vocab, f, indent=4)
+    
+    # Merge and save
+    with open(os.path.join(out_dir, "merges.txt"), "w", encoding="utf-8") as f:
+        for p1, p2 in merges:
+            s1 = "".join(byte_encoder[b] for b in p1)
+            s2 = "".join(byte_encoder[b] for b in p2)
+            f.write(f"{s1} {s2}\n")
+
+def main():
+    input_path = "xxxxxx" # training dataset
+    vocab_size = 10000 # size of BPE
+
+    
+    special_tokens = ["<|endoftext|>"]
+    output_dir = "data/TinyStoriesV2-GPT4-train"
+
+    print(f"Start training a BPE of size: {vocab_size})...")
+    print("BPE is trained on CPU")
+    
+    vocab, merges = train_bpe(input_path, vocab_size, special_tokens)
+    
+    # Save tokenizer
+    save_tokenizer_files(vocab, merges, output_dir)
+
+if __name__ == "__main__":
+    main()
